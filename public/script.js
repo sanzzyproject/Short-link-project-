@@ -1,47 +1,47 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('shortenForm');
     const providerSelect = document.getElementById('providerSelect');
+    const suffixGroup = document.getElementById('suffixGroup');
     const suffixInput = document.getElementById('suffixInput');
-    const suffixContainer = document.getElementById('suffixContainer');
     const submitBtn = document.getElementById('submitBtn');
     const btnText = submitBtn.querySelector('.btn-text');
-    const loader = submitBtn.querySelector('.loader');
+    const spinner = submitBtn.querySelector('.spinner');
     
-    const resultContainer = document.getElementById('resultContainer');
+    const resultCard = document.getElementById('resultCard');
     const resultLink = document.getElementById('resultLink');
     const copyBtn = document.getElementById('copyBtn');
-    const errorContainer = document.getElementById('errorContainer');
+    const copyText = copyBtn.querySelector('.copy-text');
+    const errorToast = document.getElementById('errorToast');
+    const errorText = document.getElementById('errorText');
 
-    // Handle Provider Change
+    // Toggle Suffix Input based on Provider
     providerSelect.addEventListener('change', (e) => {
         if (e.target.value === 'tinube') {
-            suffixContainer.style.opacity = '1';
-            suffixContainer.style.pointerEvents = 'auto';
+            suffixGroup.classList.remove('disabled');
             suffixInput.disabled = false;
+            suffixInput.focus();
         } else {
-            suffixContainer.style.opacity = '0.5';
-            suffixContainer.style.pointerEvents = 'none';
+            suffixGroup.classList.add('disabled');
             suffixInput.disabled = true;
             suffixInput.value = '';
         }
     });
 
-    // Handle Submit
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Reset UI
-        errorContainer.classList.add('hidden');
-        resultContainer.classList.add('hidden');
+        // Reset State
+        hideError();
+        resultCard.classList.add('hidden');
         setLoading(true);
 
         const url = document.getElementById('urlInput').value.trim();
         const provider = providerSelect.value;
         const suffix = suffixInput.value.trim();
 
-        // Basic Validation
-        if (!url.startsWith('http')) {
-            showError('URL harus dimulai dengan http:// atau https://');
+        // Validasi Front-end
+        if (!url) {
+            showError('Mohon masukkan URL yang valid.');
             setLoading(false);
             return;
         }
@@ -49,58 +49,80 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/shorten', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url, provider, suffix })
             });
 
-            const data = await response.json();
-
-            if (data.success) {
-                showResult(data.url);
-            } else {
-                throw new Error(data.error || 'Terjadi kesalahan misterius.');
+            // FIX UTAMA: Cek tipe konten sebelum parse JSON
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                // Jika server mengembalikan HTML error (seperti 500 Vercel Error)
+                const text = await response.text();
+                console.error("Server HTML Error:", text); 
+                throw new Error("Terjadi kesalahan server (Internal Server Error).");
             }
 
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Gagal memendekkan link.');
+            }
+
+            showResult(data.url);
+
         } catch (error) {
+            console.error(error);
             showError(error.message);
         } finally {
             setLoading(false);
         }
     });
 
-    // Copy Function
+    // Copy Functionality
     copyBtn.addEventListener('click', () => {
+        if (!resultLink.href) return;
+        
         navigator.clipboard.writeText(resultLink.href).then(() => {
-            const originalIcon = copyBtn.innerHTML;
-            copyBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            const originalText = copyText.textContent;
+            copyText.textContent = 'Disalin!';
+            copyBtn.style.background = '#ECFDF5';
+            copyBtn.style.color = '#059669';
+            
             setTimeout(() => {
-                copyBtn.innerHTML = originalIcon;
+                copyText.textContent = originalText;
+                copyBtn.style.background = 'white';
+                copyBtn.style.color = 'var(--primary)';
             }, 2000);
         });
     });
 
     function setLoading(isLoading) {
+        submitBtn.disabled = isLoading;
         if (isLoading) {
-            submitBtn.disabled = true;
             btnText.style.display = 'none';
-            loader.style.display = 'block';
+            spinner.style.display = 'block';
         } else {
-            submitBtn.disabled = false;
             btnText.style.display = 'block';
-            loader.style.display = 'none';
+            spinner.style.display = 'none';
         }
     }
 
     function showResult(url) {
         resultLink.href = url;
         resultLink.textContent = url;
-        resultContainer.classList.remove('hidden');
+        resultCard.classList.remove('hidden');
     }
 
     function showError(msg) {
-        errorContainer.textContent = msg;
-        errorContainer.classList.remove('hidden');
+        errorText.textContent = msg;
+        errorToast.classList.remove('hidden');
+        // Auto hide error after 5 seconds
+        setTimeout(() => {
+            errorToast.classList.add('hidden');
+        }, 5000);
+    }
+
+    function hideError() {
+        errorToast.classList.add('hidden');
     }
 });

@@ -1,87 +1,98 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// Class ShortUrl dari kode Anda
 class ShortUrl {
+    // FIX: Menghapus proxy CORS karena ini berjalan di server side (Node.js)
     isgd = async function (url) {
         try {
-            if (!url.includes('https://')) throw new Error('URL harus menggunakan https://');
-            
-            const { data } = await axios.post('https://cors.caliph.my.id/https://is.gd/create.php', new URLSearchParams({
+            const response = await axios.post('https://is.gd/create.php', new URLSearchParams({
                 url: url,
                 shorturl: '',
                 opt: 0
             }).toString(), {
                 headers: {
-                    'content-type': 'application/x-www-form-urlencoded',
-                    origin: 'https://is.gd',
-                    referer: 'https://is.gd/',
-                    'user-agent': 'Mozilla/5.0 (Linux; Android 15; SM-F958 Build/AP3A.240905.015) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.86 Mobile Safari/537.36'
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 }
             });
-            
-            const $ = cheerio.load(data);
+
+            // is.gd kadang return HTML penuh, kadang simple response. Kita parse aman.
+            const $ = cheerio.load(response.data);
             const result = $('input#short_url').attr('value');
-            if (!result) throw new Error('Gagal memendekkan URL (Is.gd).');
+            
+            if (!result) {
+                // Fallback jika is.gd mengembalikan error text langsung di body
+                if(response.data.includes('Error:')) {
+                     throw new Error('URL Invalid atau ditolak oleh is.gd');
+                }
+                throw new Error('Gagal memproses response is.gd');
+            }
             
             return result;
         } catch (error) {
-            throw new Error(error.message);
+            console.error("Is.gd Error:", error.message);
+            throw new Error('Gagal memendekkan link (is.gd). Coba link lain.');
         }
     }
     
     tinube = async function (url, suffix = '') {
         try {
-            if (!url.includes('https://')) throw new Error('URL harus menggunakan https://');
-            
+            // Header ini HARUS valid. Jika tinu.be update, ini bisa gagal.
             const { data } = await axios.post('https://tinu.be/en', [{
                 longUrl: url,
                 urlCode: suffix
             }], {
                 headers: {
-                    'next-action': '74b2f223fe2b6e65737e07eeabae72c67abf76b2', // Hash ini mungkin kadaluarsa jika tinu.be update
+                    'next-action': '74b2f223fe2b6e65737e07eeabae72c67abf76b2',
                     'next-router-state-tree': '%5B%22%22%2C%7B%22children%22%3A%5B%22(site)%22%2C%7B%22children%22%3A%5B%5B%22lang%22%2C%22en%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%2Ctrue%5D',
-                    origin: 'https://tinu.be',
-                    referer: 'https://tinu.be/en',
-                    'user-agent': 'Mozilla/5.0 (Linux; Android 15; SM-F958 Build/AP3A.240905.015) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.86 Mobile Safari/537.36'
+                    'origin': 'https://tinu.be',
+                    'referer': 'https://tinu.be/en',
+                    'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                    'content-type': 'text/plain;charset=UTF-8'
                 }
             });
             
-            // Parsing response logic
-            const line = data.split('\n').find(line => line.startsWith('1:'));
-            if(!line) throw new Error("Gagal parsing respon Tinu.be");
-
-            const jsonData = JSON.parse(line.substring(2));
-            const result = jsonData?.data?.urlCode;
+            // Parsing Logic yang lebih aman
+            const lines = typeof data === 'string' ? data.split('\n') : [];
+            const targetLine = lines.find(line => line.startsWith('1:'));
             
-            if (!result) throw new Error('Suffix sudah digunakan atau error server.');
+            if (!targetLine) throw new Error('Format response Tinu.be berubah.');
+
+            const jsonStr = targetLine.substring(2); // Hapus "1:"
+            const parsed = JSON.parse(jsonStr);
+            const result = parsed?.data?.urlCode;
+            
+            if (!result) throw new Error('Alias sudah dipakai atau URL tidak valid.');
             
             return 'https://tinu.be/' + result;
         } catch (error) {
-            console.error(error);
-            throw new Error('Gagal: ' + error.message);
+            console.error("Tinu.be Error:", error.message);
+            throw new Error(error.message || 'Gagal koneksi ke Tinu.be');
         }
     }
 }
 
-// Handler utama Vercel
 export default async function handler(req, res) {
-    // Enable CORS
+    // CORS Configuration untuk API
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).end();
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
     const { url, provider, suffix } = req.body;
+
+    if (!url) {
+        return res.status(400).json({ success: false, error: 'URL wajib diisi' });
+    }
+
     const shortener = new ShortUrl();
 
     try {
@@ -92,8 +103,9 @@ export default async function handler(req, res) {
             resultUrl = await shortener.isgd(url);
         }
         
-        res.status(200).json({ success: true, url: resultUrl });
+        return res.status(200).json({ success: true, url: resultUrl });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        // PENTING: Jangan throw error HTML, selalu return JSON error
+        return res.status(500).json({ success: false, error: error.message });
     }
 }

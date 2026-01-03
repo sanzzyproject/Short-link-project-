@@ -2,68 +2,93 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortLink | BY SANN404</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ShortLink Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="background-decor"></div>
-    
-    <main class="container">
-        <header>
-            <h1>ShortLink<span class="dot">.</span></h1>
-            <p class="subtitle">Persingkat link Anda dengan gaya profesional.</p>
-        </header>
+    <div class="bg-blur top-left"></div>
+    <div class="bg-blur bottom-right"></div>
 
-        <div class="card">
-            <form id="shortenForm">
-                <div class="input-group">
-                    <label for="urlInput">URL Panjang</label>
-                    <input type="url" id="urlInput" placeholder="https://contoh.com/artikel-panjang..." required autocomplete="off">
+    <main class="main-wrapper">
+        <div class="app-container">
+            <header class="app-header">
+                <div class="logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span>ShortLink</span>
+                </div>
+                <h1>Persingkat Link.<br>Perluas Jangkauan.</h1>
+                <p>Platform pemendek link modern, cepat, dan andal.</p>
+            </header>
+
+            <form id="shortenForm" class="glass-card">
+                <div class="form-group">
+                    <label for="urlInput">Target URL</label>
+                    <div class="input-wrapper">
+                        <div class="icon-slot">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        </div>
+                        <input type="url" id="urlInput" placeholder="https://website-anda.com/yang-sangat-panjang" required autocomplete="off">
+                    </div>
                 </div>
 
-                <div class="row">
-                    <div class="input-group half">
-                        <label for="providerSelect">Provider</label>
-                        <select id="providerSelect">
-                            <option value="isgd">Is.gd (Simpel)</option>
-                            <option value="tinube">Tinu.be (Custom)</option>
-                        </select>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <div class="select-wrapper">
+                            <select id="providerSelect">
+                                <option value="isgd">Is.gd (Auto)</option>
+                                <option value="tinube">Tinu.be (Custom)</option>
+                            </select>
+                            <div class="select-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
+                        </div>
                     </div>
-                    <div class="input-group half" id="suffixContainer" style="opacity: 0.5; pointer-events: none;">
-                        <label for="suffixInput">Custom Alias (Opsional)</label>
-                        <input type="text" id="suffixInput" placeholder="contoh: promoku" disabled>
+                    
+                    <div class="form-group disabled" id="suffixGroup">
+                        <label for="suffixInput">Custom Alias</label>
+                        <div class="input-wrapper">
+                            <div class="icon-slot">/</div>
+                            <input type="text" id="suffixInput" placeholder="promoku" disabled>
+                        </div>
                     </div>
                 </div>
 
                 <button type="submit" id="submitBtn">
-                    <span class="btn-text">Buat Link</span>
-                    <span class="loader"></span>
+                    <span class="btn-text">Generate Link</span>
+                    <div class="spinner"></div>
                 </button>
             </form>
 
-            <div id="resultContainer" class="result-box hidden">
-                <div class="success-icon">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <div id="resultCard" class="result-card hidden">
+                <div class="result-header">
+                    <div class="success-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Berhasil
+                    </div>
                 </div>
-                <div class="link-content">
-                    <span class="label">Link Pendek Anda:</span>
-                    <a href="#" id="resultLink" target="_blank" class="short-link">...</a>
+                <div class="result-body">
+                    <a href="#" target="_blank" id="resultLink" class="shortened-url">loading...</a>
+                    <button id="copyBtn" aria-label="Copy">
+                        <svg class="copy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span class="copy-text">Salin</span>
+                    </button>
                 </div>
-                <button id="copyBtn" aria-label="Copy Link">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
             </div>
-            
-            <div id="errorContainer" class="error-box hidden"></div>
-        </div>
 
-        <footer>
-            <p>&copy; 2024 ShortLink Pro. Serverless Architecture.</p>
-        </footer>
+            <div id="errorToast" class="error-toast hidden">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span id="errorText">Error message here</span>
+            </div>
+
+            <footer class="app-footer">
+                &copy; 2024 ShortLink. Serverless Vercel.
+            </footer>
+        </div>
     </main>
 
     <script src="script.js"></script>
